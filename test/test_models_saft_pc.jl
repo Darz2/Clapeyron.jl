@@ -32,6 +32,13 @@
     @testset "gcPCPSAFT" begin
         system = gcPCPSAFT(["acetone", "ethane","ethanol"],mixing = :homo)
         test_gibbs_duhem(system,V,T,z3)
+        test_recombine(system)
+        test_scales(system)
+        system2 = gcPCPSAFT(["acetone", "ethane","ethanol"],mixing = :hetero)
+        test_scales(system2)
+
+        @test_throws ArgumentError gcPCPSAFT(["acetone", "ethane","ethanol"],mixing = :none_of_the_above)
+
         GC.gc()
     end
     @printline
@@ -41,12 +48,16 @@
         @test Clapeyron.a_disp(system, V, T, z) ≈ -4.138653131750594 rtol = 1e-6
         @test Clapeyron.a_assoc(system, V, T, z) ≈ -1.1459701721909195 rtol = 1e-6
         test_gibbs_duhem(system,V,T,z)
+        system2 = sPCSAFT(["water","ethanol"])
+        @test Clapeyron.a_assoc(system2, V, T, z) ≈ -3.2282881877257728 rtol = 1e-6
         GC.gc()
     end
     @printline
     @testset "gcsPCSAFT" begin
         system = gcsPCSAFT(["acetone", "ethane"])
         test_gibbs_duhem(system,V,T,z)
+        test_scales(system)
+        test_recombine(system,[:pcsaftmodel])
         GC.gc()
     end
     @printline
@@ -59,6 +70,10 @@
         @test Clapeyron.a_disp(system, V, T, z) ≈ -10.594659479487497 rtol = 1e-6
         @test Clapeyron.a_assoc(system, V, T, z) ≈ -0.9528180944200482 rtol = 1e-6
         test_gibbs_duhem(system,V,T,z)
+
+        system2 = gcPCPSAFT(["acetone", "ethane","ethanol"],mixing = :hetero)
+        @test Clapeyron.a_assoc(system2, V, T, z3) ≈ -0.46072184884780865 rtol = 1e-6
+
         GC.gc()
     end
     @printline
@@ -70,10 +85,16 @@ end
     let T = 298.15, V = 1e-4,z1 = Clapeyron.SA[1.0],z = [0.5,0.5],z3 = [0.333, 0.333,0.333];
     @printline
     @testset "CP-PCSAFT" begin
-        system = CPPCSAFT(["butane", "propane"])
-        @test Clapeyron.a_hc(system, V, T, z) ≈ 3.856483933013827 rtol = 1e-6
-        @test Clapeyron.a_disp(system, V, T, z) ≈ -6.613302753897683 rtol = 1e-6
+        system = CPPCSAFT(["butane", "ethanol"])
+        @test Clapeyron.a_hc(system, V, T, z) ≈ 3.5147121772115604 rtol = 1e-6
+        @test Clapeyron.a_disp(system, V, T, z) ≈ -6.096718490450866 rtol = 1e-6
+        @test Clapeyron.a_assoc(system, V, T, z) ≈ -1.86685186469097 rtol = 1e-6
         test_gibbs_duhem(system,V,T,z)
+        system2 = CPPCSAFT("water")
+        @test Clapeyron.a_assoc(system2,V,T,Clapeyron.SA[1.0]) ≈ -5.928187577713146 rtol = 1e-6  
+        system3 = CPPCSAFT(["butane", "propane"])
+        @test Clapeyron.a_hc(system3, V, T, z) ≈ 3.856483933013827 rtol = 1e-6
+        @test Clapeyron.a_disp(system3, V, T, z) ≈ -6.613302753897683 rtol = 1e-6
         GC.gc()
     end
     @printline

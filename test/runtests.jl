@@ -56,15 +56,51 @@ function test_volume(model,p,T,z = Clapeyron.SA[1.0],rtol = 1e-8)
     @test p ≈ Clapeyron.pressure(model,v,T,z) rtol = rtol
 end
 
-function test_scales(model,z)
+function test_scales(model,T0 = 300.0)
+    n = length(model)
+    z = ones(n) ./ n
     z3 = 3 .* z
     z7 = 7 .* z
-    T0 = 300.0
-    @test lb_volume(model,T0,z3) ≈ 3*lb_volume(model,z)
-    @test lb_volume(model,T0,z7) ≈ 7*lb_volume(model,z)
-    @test T_scale(model,z3) ≈ T_scale(model,z)
-    @test p_scale(model,z3) ≈ p_scale(model,z)
+    @test Clapeyron.lb_volume(model,T0,z3) ≈ 3*Clapeyron.lb_volume(model,z)
+    @test Clapeyron.lb_volume(model,T0,z7) ≈ 7*Clapeyron.lb_volume(model,z)
+    @test Clapeyron.T_scale(model,z3) ≈ Clapeyron.T_scale(model,z)
+    @test Clapeyron.p_scale(model,z3) ≈ Clapeyron.p_scale(model,z)
 end
+
+function test_recombine(model,innermodels = nothing)
+    model1 = deepcopy(model)
+    model2 = deepcopy(model)
+    Clapeyron.recombine!(model1)
+    _test_recombine(model1,model2)
+    if innermodels != nothing
+        for field in innermodels
+            innermodel = getfield(model1,field)
+            innermodel2 = getfield(model2,field)
+            _test_recombine(innermodel,innermodel2)
+        end
+    end
+end
+
+function _test_recombine(model1,model2)
+    if hasfield(typeof(model1),:params)
+        params1 = model1.params
+        params2 = model2.params
+        for i in 1:fieldcount(typeof(params1))
+            p1 = getfield(params1,i)
+            p2 = getfield(params2,i)
+            if p1 isa SingleParam || p1 isa PairParam
+                @test p1.values == p2.values
+            elseif p1 isa AssocParam
+                @test p1.values.values == p2.values.values
+                @test p1.values.inner_indices == p2.values.inner_indices
+                @test p1.values.outer_indices == p2.values.outer_indices
+            elseif p1 isa Clapeyron.MixedGCSegmentParam
+                @test p1.values.v == p2.values.v
+            end
+        end
+    end
+end
+
 #=
 include_distributed distributes the test load among all workers
 =#
